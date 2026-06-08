@@ -17,7 +17,9 @@ import {
   ArrowRight,
   RefreshCcw,
   Settings2,
-  BellOff
+  BellOff,
+  BarChart2,
+  ChevronDown
 } from 'lucide-react';
 import { 
   format, 
@@ -265,6 +267,23 @@ export default function App() {
     return <SettingsView userProfile={userProfile} onBack={() => setCurrentView('dashboard')} />;
   }
 
+  if (currentView === 'analysis') {
+    return (
+      <AnalysisView 
+        users={visibleUsers} 
+        availability={groupAvailability} 
+        selectedUserIds={selectedUserIds} 
+        setSelectedUserIds={setSelectedUserIds}
+        viewDate={viewDate} 
+        hours={hours} 
+        formatHour={formatHour} 
+        overlaps={overlaps}
+        groupUsers={groupUsers}
+        onBack={() => setCurrentView('dashboard')} 
+      />
+    );
+  }
+
   return (
     <div className="w-full h-screen bg-black text-white flex flex-col font-sans overflow-hidden noise selection:bg-vivid-blue selection:text-black">
       {/* Liquid Glass Background Elements */}
@@ -300,6 +319,13 @@ export default function App() {
             className="flex bg-white/5 border-white/5"
           >
             <RefreshCcw className={cn("w-4 h-4", refreshKey > 0 && "animate-spin-once")} />
+          </IconButton>
+          <IconButton 
+            onClick={() => setCurrentView(currentView === 'analysis' ? 'dashboard' : 'analysis')}
+            tooltip="Analysis View"
+            className={cn("flex bg-white/5 border-white/5 transition-all", currentView === 'analysis' && "bg-vivid-blue text-black border-vivid-blue")}
+          >
+            <BarChart2 className="w-4 h-4" />
           </IconButton>
           <IconButton 
             onClick={() => setCurrentView(currentView === 'dashboard' ? 'settings' : 'dashboard')}
@@ -385,34 +411,6 @@ export default function App() {
                 <div className="w-4 h-4 rounded-sm bg-white/5 border border-white/10" />
                 <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Locked</span>
               </div>
-            </div>
-
-            <div className="mt-8 pt-8 border-t border-white/5">
-               <h3 className="text-[10px] font-display font-bold text-white/20 uppercase tracking-[0.2em] mb-4">Analysis</h3>
-               <AlignmentSearch 
-                 users={visibleUsers} 
-                 availability={groupAvailability} 
-                 selectedUserIds={selectedUserIds}
-                 viewDate={viewDate}
-                 hours={hours}
-                 formatHour={formatHour}
-               />
-            </div>
-
-            <div className="mt-8 pt-8 border-t border-white/5">
-               <div className="space-y-4">
-                  {Object.entries(overlaps).filter(([_, count]) => (count as number) > 0).sort((a: any, b: any) => (b[1] as number) - (a[1] as number)).slice(0, 3).map(([h, count]) => (
-                    <div key={h} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-3 h-3 text-vivid-blue/60" />
-                        <span className="text-[10px] font-bold text-white/40 tracking-widest">{formatHour(Number(h))}</span>
-                      </div>
-                      <Badge variant={(count as number) >= (selectedUserIds.size || groupUsers.length) * 0.7 ? "success" : "default"}>
-                        {count} / {selectedUserIds.size || groupUsers.length}
-                      </Badge>
-                    </div>
-                  ))}
-               </div>
             </div>
           </div>
         </motion.aside>
@@ -667,6 +665,7 @@ function Onboarding({ user, onComplete }: any) {
 
 function AlignmentSearch({ users, availability, selectedUserIds, viewDate, hours, formatHour }: any) {
   const [selectedHour, setSelectedHour] = useState(hours[0] || 10);
+  const [isOpen, setIsOpen] = useState(false);
   
   const todayStr = format(viewDate, 'yyyy-MM-dd');
   const relevantUsers = users.filter((u: any) => selectedUserIds.size === 0 || selectedUserIds.has(u.id));
@@ -680,23 +679,40 @@ function AlignmentSearch({ users, availability, selectedUserIds, viewDate, hours
   const busyUsers = relevantUsers.filter((u: any) => !availableUsers.find((au: any) => au.id === u.id));
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="flex-grow p-2 bg-white/10 border border-white/20 rounded-sm flex items-center gap-2">
-          <Clock className="w-4 h-4 text-white/30" />
-          <select 
-            value={selectedHour}
-            onChange={(e) => setSelectedHour(Number(e.target.value))}
-            className="bg-transparent text-[10px] font-bold text-white uppercase tracking-widest focus:outline-none w-full"
-          >
+    <div className="space-y-6">
+      <div className="relative">
+        <button 
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full p-4 bg-black/40 border border-white/10 hover:border-vivid-blue/50 rounded-sm flex items-center justify-between transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <Clock className="w-4 h-4 text-vivid-blue/60" />
+            <span className="text-xs font-mono font-bold text-white tracking-widest">
+               {formatHour(selectedHour)} - {formatHour(selectedHour + 1)}
+            </span>
+          </div>
+          <ChevronDown className={cn("w-4 h-4 text-white/40 transition-transform", isOpen && "rotate-180")} />
+        </button>
+
+        {isOpen && (
+          <div className="absolute top-full left-0 right-0 mt-2 max-h-48 overflow-y-auto custom-scrollbar bg-zinc-950 border border-white/10 shadow-xl rounded-sm z-50">
             {hours.map((h: number) => (
-              <option key={h} value={h} className="bg-black">{formatHour(h)} - {formatHour(h + 1)}</option>
+              <button
+                key={h}
+                onClick={() => { setSelectedHour(h); setIsOpen(false); }}
+                className={cn(
+                  "w-full text-left px-4 py-3 text-xs font-mono font-bold tracking-widest hover:bg-white/5 transition-colors",
+                  selectedHour === h ? "text-vivid-blue bg-vivid-blue/5" : "text-white/60"
+                )}
+              >
+                {formatHour(h)} - {formatHour(h + 1)}
+              </button>
             ))}
-          </select>
-        </div>
+          </div>
+        )}
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 pt-4 border-t border-white/5">
         <div className="flex items-center justify-between">
           <span className="text-[9px] font-display font-bold text-white/50 uppercase tracking-[0.2em]">Alignment Status</span>
           <Badge variant={availableUsers.length === relevantUsers.length ? 'success' : 'busy'}>
@@ -715,17 +731,17 @@ function AlignmentSearch({ users, availability, selectedUserIds, viewDate, hours
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <p className="text-[8px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-2">Free</p>
-              {availableUsers.slice(0, 3).map((u: any) => (
+              {availableUsers.slice(0, 5).map((u: any) => (
                 <p key={u.id} className="text-[10px] font-bold text-white/60 truncate uppercase tracking-widest">{u.name}</p>
               ))}
-              {availableUsers.length > 3 && <p className="text-[8px] text-white/20 uppercase tracking-widest">+{availableUsers.length - 3} more</p>}
+              {availableUsers.length > 5 && <p className="text-[8px] text-white/20 uppercase tracking-widest">+{availableUsers.length - 5} more</p>}
             </div>
             <div className="space-y-1">
               <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-2">Busy</p>
-              {busyUsers.slice(0, 3).map((u: any) => (
+              {busyUsers.slice(0, 5).map((u: any) => (
                 <p key={u.id} className="text-[10px] font-bold text-white/40 truncate uppercase tracking-widest">{u.name}</p>
               ))}
-              {busyUsers.length > 3 && <p className="text-[8px] text-white/20 uppercase tracking-widest">+{busyUsers.length - 3} more</p>}
+              {busyUsers.length > 5 && <p className="text-[8px] text-white/20 uppercase tracking-widest">+{busyUsers.length - 5} more</p>}
             </div>
           </div>
         )}
@@ -1339,6 +1355,105 @@ function SettingsView({ userProfile, onBack }: { userProfile: any, onBack: () =>
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// --- Analysis View ---
+
+function AnalysisView({ users, availability, selectedUserIds, setSelectedUserIds, viewDate, hours, formatHour, overlaps, groupUsers, onBack }: any) {
+  const toggleUserSelection = (userId: string) => {
+    const next = new Set(selectedUserIds);
+    if (next.has(userId)) {
+      next.delete(userId);
+    } else {
+      next.add(userId);
+    }
+    setSelectedUserIds(next);
+  };
+
+  return (
+    <div className="h-screen w-full bg-black flex flex-col p-8 sm:p-16 overflow-hidden relative selection:bg-vivid-blue selection:text-black">
+      <div className="absolute inset-0 pointer-events-none noise opacity-20" />
+      <div className="absolute inset-0 pointer-events-none liquid-flare opacity-40 z-0" />
+
+      <div className="max-w-5xl w-full mx-auto relative z-10 flex flex-col h-full">
+        <header className="flex items-center justify-between mb-12">
+          <div>
+            <div className="flex items-center gap-4 mb-4">
+               <div className="w-12 h-1 bg-vivid-blue" />
+               <span className="text-[10px] font-black tracking-[0.3em] text-vivid-blue uppercase">Insights</span>
+            </div>
+            <h1 className="text-3xl font-display uppercase tracking-[0.4em] text-white">Analysis</h1>
+          </div>
+          <IconButton onClick={onBack} tooltip="Back to Dashboard">
+            <ChevronLeft className="w-4 h-4" />
+          </IconButton>
+        </header>
+
+        <div className="flex-grow overflow-y-auto custom-scrollbar pr-4 pb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-4 space-y-4">
+               <h2 className="text-[10px] font-display font-bold text-white/40 uppercase tracking-[0.2em] mb-6">Target Members</h2>
+               <div className="flex flex-col gap-2">
+                  {groupUsers.map((user: any) => {
+                     const isSelected = selectedUserIds.size === 0 || selectedUserIds.has(user.id);
+                     return (
+                        <button
+                          key={user.id}
+                          onClick={() => toggleUserSelection(user.id)}
+                          className={cn(
+                            "p-4 flex items-center justify-between border rounded-sm transition-all text-left group", 
+                            isSelected ? "bg-white/10 border-vivid-blue/50" : "bg-black/40 border-white/5 opacity-50 hover:opacity-100 hover:border-white/20"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <img src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`} className="w-6 h-6 rounded-full opacity-80" alt={user.name} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-white">{user.name}</span>
+                          </div>
+                          {isSelected && <CheckCircle2 className="w-4 h-4 text-vivid-blue" />}
+                        </button>
+                     )
+                  })}
+               </div>
+            </div>
+
+            <div className="lg:col-span-8 space-y-8">
+              <div className="p-8 bg-white/5 border border-white/10 rounded-sm backdrop-blur-md">
+                 <h2 className="text-[10px] font-display font-bold text-white/40 uppercase tracking-[0.2em] mb-6">Alignment Engine</h2>
+                 <AlignmentSearch 
+                   users={users} 
+                   availability={availability} 
+                   selectedUserIds={selectedUserIds}
+                   viewDate={viewDate}
+                   hours={hours}
+                   formatHour={formatHour}
+                 />
+              </div>
+
+              <div className="p-8 bg-white/5 border border-white/10 rounded-sm backdrop-blur-md">
+                 <h2 className="text-[10px] font-display font-bold text-white/40 uppercase tracking-[0.2em] mb-6">Optimal Time Slots</h2>
+                 <div className="space-y-4">
+                    {Object.entries(overlaps).filter(([_, count]) => (count as number) > 0).sort((a: any, b: any) => (b[1] as number) - (a[1] as number)).slice(0, 5).map(([h, count]) => (
+                      <div key={h} className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-sm">
+                        <div className="flex items-center gap-4">
+                          <Clock className="w-4 h-4 text-vivid-blue/60" />
+                          <span className="text-xs font-mono font-bold text-white tracking-widest">{formatHour(Number(h))}</span>
+                        </div>
+                        <Badge variant={(count as number) >= (selectedUserIds.size || groupUsers.length) * 0.7 ? "success" : "default"}>
+                          {count} / {selectedUserIds.size || groupUsers.length} Available
+                        </Badge>
+                      </div>
+                    ))}
+                    {Object.values(overlaps).every(count => count === 0) && (
+                       <p className="text-[10px] text-white/30 uppercase tracking-widest text-center py-4">No overlapping free time found for the selected team members.</p>
+                    )}
+                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
