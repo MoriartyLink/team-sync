@@ -1,56 +1,33 @@
-# Team Sync App - User Manual
+# Team Sync
+*The fastest way to align your team's schedule.*
 
-The **Team Sync App** (Availability Matrix) is a real-time scheduling tool designed to help teams effortlessly find overlapping free time. With an intuitive drag-to-toggle interface and a powerful analysis engine, coordinating your team has never been smoother.
+## Why use Team Sync?
+Scheduling meetings shouldn't require mental gymnastics. Pinging "are you free at 3 PM?" in chat wastes time and breaks focus. Team Sync solves this by providing a shared, real-time availability matrix. You paint the times you are free, and the engine automatically calculates the optimal meeting slots for everyone. No guessing, no friction. 
 
----
-
-## 🧭 Navigation & Features
-
-### 1. Dashboard (Matrix View)
-The Dashboard is your main hub for managing and viewing availability.
-*   **Time Grid:** View the schedule in **Day** or **Week** mode.
-*   **Drag to Toggle:** Simply click and drag across the grid cells to mark yourself as available or busy. The interface updates instantly for a buttery-smooth experience while syncing with the server in the background.
-*   **Time Format:** Toggle between 12-hour and 24-hour time formats using the top navigation bar.
-*   **Team Filtering:** Click on team members in the left-hand column to filter the grid and see specific overlaps.
-
-### 2. Analysis View
-*Accessible via the Bar Chart icon in the top navigation bar.*
-
-The Analysis view provides a dedicated, distraction-free environment to calculate the best meeting times.
-*   **Target Members:** Select or deselect specific team members directly from the left sidebar to focus your analysis.
-*   **Alignment Engine:** Pick a specific hour using the custom dropdown menu to see exactly who is "Free" and who is "Busy" at that time.
-*   **Optimal Time Slots:** Automatically calculates and ranks the top 5 best times to meet based on the maximum overlapping availability of your selected Target Members.
-
-### 3. Profile & Settings
-*Accessible via the Sliders icon in the top navigation bar.*
-*   **Profile Customization:** Update your Full Name, Current Role, and Avatar URL to personalize your presence on the grid.
-*   **Team Access Code:** Switch to a different shared network by updating your Team Code. *(Warning: This changes the group of users you see and share availability with).*
+## Who is it for?
+- **Remote & Hybrid Teams:** Coordinate across different routines and habits without the endless back-and-forth.
+- **Project Managers & Leads:** Instantly see exactly when your entire squad is available for a sync.
+- **Agencies & Freelancers:** Align with client teams and contractors effortlessly.
 
 ---
 
-## 🛠️ Getting Started (Local Development)
+## User Manual: How it works
 
-**Prerequisites:** Node.js v18+ recommended.
+### 1. Paint Your Free Time (Dashboard)
+Forget clunky calendar invites. On the main Dashboard, simply **click and drag** across the grid to paint the hours you are available. 
+- The grid updates instantly as you drag.
+- Toggle between **Day** or **Week** views to plan ahead.
+- Switch between 12h/24h formats using the top menu.
 
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+### 2. Find the Perfect Meeting Time (Analysis View)
+Click the **Bar Chart** icon in the top navigation to open the Analysis view.
+- **Target Members:** Select exactly who needs to be in the meeting from the left sidebar.
+- **Optimal Time Slots:** The engine automatically ranks the top 5 best times to meet based on the selected members.
+- **Alignment Engine:** Use the dropdown to pick a specific hour and see exactly who is free and who is blocking the slot.
 
-2. **Configure Environment:**
-   Make sure you have your `.env` file set up with the necessary Supabase and Firebase configuration keys (if applicable to your current backend setup).
-   *(You can use `.env.example` as a template).*
+### 3. Join Your Squad (Settings)
+Click the **Settings** icon in the top right to update your profile.
+- **Team Access Code:** Enter your squad's unique code to join their matrix. Only people with this shared code can see and interact with your schedule.
 
-3. **Run the development server:**
-   ```bash
-   npm run dev
-   ```
-
-4. **Build for production:**
-   ```bash
-   npm run build
-   ```
-
-## 🔒 Admin Features
-*(For authorized administrators only)*
-The application includes an Admin Dashboard (`/admin`) to manage team access codes, monitor overall usage statistics, and control user visibility across the platform.
+---
+*Built for speed. Designed for focus.*
