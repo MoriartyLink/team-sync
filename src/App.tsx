@@ -46,8 +46,6 @@ import {
   addAvailability,
   deleteAvailability,
   duplicateAvailabilityToWeeks,
-  addRecurringAvailability,
-  removeRecurringAvailability,
   updateProfile,
   createTeamCode,
   validateTeamCode
@@ -386,24 +384,6 @@ export default function App() {
               <div className="flex items-center gap-3">
                 <div className="w-4 h-4 rounded-sm bg-white/5 border border-white/10" />
                 <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Locked</span>
-              </div>
-            </div>
-            
-            <div className="mt-8 pt-8 border-t border-white/5">
-              <h3 className="text-[10px] font-display font-bold text-white/20 uppercase tracking-[0.2em] mb-4">Shortcuts</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <button 
-                  onClick={() => setViewDate(new Date())}
-                  className="px-3 py-2 bg-white/5 text-[9px] font-bold rounded-sm border border-white/10 hover:bg-white hover:text-black transition-all uppercase tracking-widest backdrop-blur-md"
-                >
-                  Today
-                </button>
-                <button 
-                  onClick={() => setViewDate(addWeeks(viewDate, 1))}
-                  className="px-3 py-2 bg-white/5 text-[9px] font-bold rounded-sm border border-white/10 hover:bg-white hover:text-black transition-all uppercase tracking-widest backdrop-blur-md"
-                >
-                  Next
-                </button>
               </div>
             </div>
 
@@ -857,13 +837,6 @@ function MonthCalendar({ viewDate, setViewDate, availability, usersCount }: any)
 function MatrixView({ users, availability, currentUserId, viewDate, setViewDate, viewMode, setViewMode, direction, userProfile, hours, formatHour, overlaps, selectedUserIds, setSelectedUserIds }: any) {
   const [hoveredSlot, setHoveredSlot] = useState<any>(null);
   const [optimisticAvailability, setOptimisticAvailability] = useState<any[]>([]);
-  const [showRecurrenceTool, setShowRecurrenceTool] = useState(false);
-  const [recurrenceData, setRecurrenceToolData] = useState({
-    start: 9,
-    end: 17,
-    weeks: 4,
-    type: 'add' as 'add' | 'remove'
-  });
 
   // Keep optimistic availability in sync with real availability, but prioritize local changes
   useEffect(() => {
@@ -988,31 +961,6 @@ function MatrixView({ users, availability, currentUserId, viewDate, setViewDate,
     }
   };
 
-  const handleApplyRecurrence = async () => {
-    setIsCopying(true);
-    const selectedHours = [];
-    for (let h = recurrenceData.start; h <= recurrenceData.end; h++) {
-      selectedHours.push(h);
-    }
-
-    try {
-      if (recurrenceData.type === 'add') {
-        await addRecurringAvailability({
-          groupId: userProfile.groupId,
-          date: todayStr,
-          startTime: recurrenceData.start * 60,
-          duration: 60,
-          type: 'free'
-        }, selectedHours, recurrenceData.weeks);
-      } else {
-        await removeRecurringAvailability(selectedHours, todayStr, recurrenceData.weeks);
-      }
-      setShowRecurrenceTool(false);
-    } finally {
-      setIsCopying(false);
-    }
-  };
-
 
   const weekDays = useMemo(() => {
     const start = startOfWeek(viewDate, { weekStartsOn: 1 });
@@ -1085,92 +1033,6 @@ function MatrixView({ users, availability, currentUserId, viewDate, setViewDate,
              >
                Week
              </button>
-           </div>
-           
-           <div className="flex items-center bg-white/5 rounded-sm border border-white/10 overflow-hidden backdrop-blur-md relative">
-             <button 
-               onClick={() => setShowRecurrenceTool(!showRecurrenceTool)}
-               className={cn(
-                 "px-4 py-2 text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2",
-                 showRecurrenceTool ? "bg-white text-black" : "text-white/60 hover:bg-white/10 hover:text-white"
-               )}
-             >
-               <RefreshCcw className="w-3 h-3" />
-               Recurring Entry
-             </button>
-             
-             {showRecurrenceTool && (
-                <div className="absolute top-full right-0 mt-2 w-64 glass border-vivid-blue/30 p-4 shadow-2xl z-50 rounded-sm flex flex-col gap-3">
-                  <p className="text-[10px] font-display font-bold uppercase tracking-widest text-vivid-blue border-b border-white/5 pb-2">Batch Protocol</p>
-                  
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[8px] uppercase tracking-widest text-white/40">Time Range (Today)</label>
-                    <div className="flex items-center gap-2">
-                      <select 
-                        value={recurrenceData.start}
-                        onChange={(e) => setRecurrenceToolData(d => ({ ...d, start: Number(e.target.value) }))}
-                        className="flex-1 bg-black/50 border border-white/10 px-2 py-1.5 text-white text-[10px] font-bold focus:outline-none focus:border-vivid-blue/50"
-                      >
-                        {hours.map(h => <option key={h} value={h}>{formatHour(h)}</option>)}
-                      </select>
-                      <span className="text-white/40 text-[10px]">to</span>
-                      <select 
-                        value={recurrenceData.end}
-                        onChange={(e) => setRecurrenceToolData(d => ({ ...d, end: Number(e.target.value) }))}
-                        className="flex-1 bg-black/50 border border-white/10 px-2 py-1.5 text-white text-[10px] font-bold focus:outline-none focus:border-vivid-blue/50"
-                      >
-                        {hours.map(h => <option key={h} value={h}>{formatHour(h+1)}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[8px] uppercase tracking-widest text-white/40">Duration</label>
-                    <select 
-                      value={recurrenceData.weeks}
-                      onChange={(e) => setRecurrenceToolData(d => ({ ...d, weeks: Number(e.target.value) }))}
-                      className="w-full bg-black/50 border border-white/10 px-2 py-1.5 text-white text-[10px] font-bold focus:outline-none focus:border-vivid-blue/50"
-                    >
-                      <option value={1}>Today Only</option>
-                      <option value={2}>2 Weeks</option>
-                      <option value={4}>4 Weeks</option>
-                      <option value={8}>8 Weeks</option>
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[8px] uppercase tracking-widest text-white/40">Action</label>
-                    <div className="flex gap-2">
-                       <button
-                         onClick={() => setRecurrenceToolData(d => ({ ...d, type: 'add' }))}
-                         className={cn(
-                           "flex-1 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-sm transition-all",
-                           recurrenceData.type === 'add' ? "bg-vivid-blue text-black" : "bg-white/5 text-white/40 hover:bg-white/10"
-                         )}
-                       >
-                         Available
-                       </button>
-                       <button
-                         onClick={() => setRecurrenceToolData(d => ({ ...d, type: 'remove' }))}
-                         className={cn(
-                           "flex-1 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-sm transition-all",
-                           recurrenceData.type === 'remove' ? "bg-red-500 text-white" : "bg-white/5 text-white/40 hover:bg-white/10"
-                         )}
-                       >
-                         Clear
-                       </button>
-                    </div>
-                  </div>
-
-                  <button 
-                    onClick={handleApplyRecurrence}
-                    disabled={isCopying || recurrenceData.start > recurrenceData.end}
-                    className="w-full mt-2 py-2 bg-white text-black font-bold text-[10px] uppercase tracking-widest hover:invert transition-all disabled:opacity-50"
-                  >
-                    {isCopying ? 'Executing...' : 'Execute Protocol'}
-                  </button>
-                </div>
-             )}
            </div>
           </div>
       </div>
