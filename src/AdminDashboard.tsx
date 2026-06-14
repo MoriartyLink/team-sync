@@ -11,10 +11,11 @@ import {
   adminToggleUserVisibility,
   createTeamCode,
   deleteTeamCode,
-  syncTeamCodes
+  syncTeamCodes,
+  syncAllUsers
 } from './lib/supabaseService';
 
-export default function AdminDashboard({ groupUsers, onBack }: { groupUsers: any[], onBack: () => void }) {
+export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passcode, setPasscode] = useState('');
@@ -24,6 +25,7 @@ export default function AdminDashboard({ groupUsers, onBack }: { groupUsers: any
   const [isPurging, setIsPurging] = useState(false);
   const [error, setError] = useState('');
   const [teamCodes, setTeamCodes] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [newCode, setNewCode] = useState('');
   const [showCodeManager, setShowCodeManager] = useState(false);
   const [authStep, setAuthStep] = useState<'login' | 'passcode'>('login');
@@ -48,8 +50,12 @@ export default function AdminDashboard({ groupUsers, onBack }: { groupUsers: any
 
   useEffect(() => {
     if (isAuthorized) {
-      const unsub = syncTeamCodes(setTeamCodes);
-      return () => unsub();
+      const unsubCodes = syncTeamCodes(setTeamCodes);
+      const unsubUsers = syncAllUsers(setAllUsers);
+      return () => {
+        unsubCodes();
+        unsubUsers();
+      };
     }
   }, [isAuthorized]);
 
@@ -105,11 +111,10 @@ export default function AdminDashboard({ groupUsers, onBack }: { groupUsers: any
     }
   };
 
-  const handlePurgeAll = async () => {
-    const confirmCode = window.prompt('DANGER: Master Purge requested. This will delete EVERY user in this cluster. Enter the MASTER OVERRIDE CODE to authorize (TALKWARE2026):');
+  const handlePurgeTeam = async (groupId: string) => {
+    const confirmCode = window.prompt(`DANGER: Purge requested for team code ${groupId}. This will delete EVERY user in this cluster. Enter the MASTER OVERRIDE CODE to authorize (TALKWARE2026):`);
     
     if (confirmCode === 'TALKWARE2026') {
-      const groupId = groupUsers[0]?.groupId;
       if (!groupId) return alert("No Team Access Code identified.");
       
       setIsPurging(true);
@@ -236,13 +241,6 @@ export default function AdminDashboard({ groupUsers, onBack }: { groupUsers: any
             {showCodeManager ? 'User Grid' : 'Team Access Codes'}
           </button>
           <button 
-            onClick={handlePurgeAll}
-            disabled={isPurging}
-            className="px-8 py-3 border border-red-500/50 bg-red-500/5 text-red-500 text-[10px] font-bold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all rounded-sm backdrop-blur-3xl disabled:opacity-50 disabled:cursor-wait"
-          >
-            {isPurging ? 'Purging Team...' : 'Purge All Team Data'}
-          </button>
-          <button 
             onClick={onBack}
             className="px-8 py-3 border border-white/10 bg-white/5 text-[10px] font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-sm backdrop-blur-3xl"
           >
@@ -345,70 +343,93 @@ export default function AdminDashboard({ groupUsers, onBack }: { groupUsers: any
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              className="space-y-12"
             >
-              {groupUsers.map(user => (
-                <motion.div 
-                  key={user.id || user.uid}
-                  layout
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-                  className="p-8 bg-zinc-900/40 border border-white/5 rounded-sm group hover:border-red-500/40 transition-all backdrop-blur-3xl relative"
-                >
-                  <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-100 transition-opacity">
-                     <Users2 className="w-4 h-4 text-white" />
+              {Object.entries(
+                allUsers.reduce((acc, user) => {
+                  const gId = user.groupId || 'unknown';
+                  if (!acc[gId]) acc[gId] = { groupName: user.groupName || 'Unknown Team', users: [] };
+                  acc[gId].users.push(user);
+                  return acc;
+                }, {} as Record<string, { groupName: string, users: any[] }>)
+              ).map(([groupId, { groupName, users }]) => (
+                <div key={groupId} className="space-y-6">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                    <h2 className="text-xl font-display uppercase tracking-widest text-white/80">Cluster: {groupId}</h2>
+                    <button 
+                      onClick={() => handlePurgeTeam(groupId)}
+                      disabled={isPurging}
+                      className="px-6 py-2 border border-red-500/50 bg-red-500/5 text-red-500 text-[9px] font-bold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all rounded-sm backdrop-blur-3xl disabled:opacity-50 disabled:cursor-wait"
+                    >
+                      Purge Team Data
+                    </button>
                   </div>
-                  
-                  <div className="flex items-center gap-5 mb-8">
-                    <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-sm flex items-center justify-center text-white/20 group-hover:text-red-500 group-hover:border-red-500/20 transition-all">
-                      <Users2 className="w-6 h-6" />
-                    </div>
-                    <div className="flex-grow">
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-white mb-1">{user.name}</h3>
-                      <p className="text-[9px] text-white/20 uppercase tracking-widest font-black leading-none">{user.role} / Team Access Code: {user.groupId}</p>
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {users.map(user => (
+                      <motion.div 
+                        key={user.id || user.uid}
+                        layout
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                        className="p-8 bg-zinc-900/40 border border-white/5 rounded-sm group hover:border-red-500/40 transition-all backdrop-blur-3xl relative"
+                      >
+                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-100 transition-opacity">
+                           <Users2 className="w-4 h-4 text-white" />
+                        </div>
+                        
+                        <div className="flex items-center gap-5 mb-8">
+                          <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-sm flex items-center justify-center text-white/20 group-hover:text-red-500 group-hover:border-red-500/20 transition-all">
+                            <Users2 className="w-6 h-6" />
+                          </div>
+                          <div className="flex-grow">
+                            <h3 className="text-sm font-bold uppercase tracking-widest text-white mb-1">{user.name}</h3>
+                            <p className="text-[9px] text-white/20 uppercase tracking-widest font-black leading-none">{user.role} / Team Access Code: {user.groupId}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-4 pt-4 border-t border-white/5">
+                           <div className="flex items-center justify-between text-[11px] uppercase tracking-widest font-bold">
+                              <span className="text-white/20">Ident:</span>
+                              <span className="text-white/60 font-mono">{(user.id || user.uid || '').slice(0, 12)}</span>
+                           </div>
+                           <div className="flex items-center justify-between text-[11px] uppercase tracking-widest font-bold">
+                              <span className="text-white/20">Access:</span>
+                              <span className={cn("font-black", user.isHidden ? "text-red-500" : "text-emerald-500")}>
+                                {user.isHidden ? 'HIDDEN / OFFLINE' : 'VISIBLE / ACTIVE'}
+                              </span>
+                           </div>
+                           
+                           <div className="pt-6 flex flex-col gap-4">
+                              <button 
+                                onClick={() => adminToggleUserVisibility(user.id || user.uid, !user.isHidden)}
+                                className={cn(
+                                  "w-full py-4 border text-[11px] font-bold uppercase tracking-[0.2em] transition-all rounded-sm flex items-center justify-center gap-2",
+                                  user.isHidden
+                                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white"
+                                    : "border-white/10 bg-white/5 text-white/50 hover:bg-white hover:text-black"
+                                )}
+                              >
+                                {user.isHidden ? 'Restore To Team Sync' : 'Hide from Team Sync'}
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteUser(user.id || user.uid)}
+                                disabled={isDeleting === (user.id || user.uid)}
+                                className={cn(
+                                  "w-full py-4 border text-[11px] font-bold uppercase tracking-[0.2em] transition-all rounded-sm flex items-center justify-center gap-2",
+                                  isDeleting === (user.id || user.uid) 
+                                    ? "bg-red-600 border-red-600 text-white animate-pulse"
+                                    : "border-red-500/20 bg-red-500/5 text-red-500/60 hover:bg-red-600 hover:text-white hover:border-red-600"
+                                )}
+                              >
+                                {isDeleting === (user.id || user.uid) ? 'DELETING...' : 'Terminate Subject'}
+                              </button>
+                           </div>
+                        </div>
+                      </motion.div>
+                    ))}
                   </div>
-                  
-                  <div className="space-y-4 pt-4 border-t border-white/5">
-                     <div className="flex items-center justify-between text-[11px] uppercase tracking-widest font-bold">
-                        <span className="text-white/20">Ident:</span>
-                        <span className="text-white/60 font-mono">{(user.id || user.uid || '').slice(0, 12)}</span>
-                     </div>
-                     <div className="flex items-center justify-between text-[11px] uppercase tracking-widest font-bold">
-                        <span className="text-white/20">Access:</span>
-                        <span className={cn("font-black", user.isHidden ? "text-red-500" : "text-emerald-500")}>
-                          {user.isHidden ? 'HIDDEN / OFFLINE' : 'VISIBLE / ACTIVE'}
-                        </span>
-                     </div>
-                     
-                     <div className="pt-6 flex flex-col gap-4">
-                        <button 
-                          onClick={() => adminToggleUserVisibility(user.id || user.uid, !user.isHidden)}
-                          className={cn(
-                            "w-full py-4 border text-[11px] font-bold uppercase tracking-[0.2em] transition-all rounded-sm flex items-center justify-center gap-2",
-                            user.isHidden
-                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white"
-                              : "border-white/10 bg-white/5 text-white/50 hover:bg-white hover:text-black"
-                          )}
-                        >
-                          {user.isHidden ? 'Restore To Team Sync' : 'Hide from Team Sync'}
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteUser(user.id || user.uid)}
-                          disabled={isDeleting === (user.id || user.uid)}
-                          className={cn(
-                            "w-full py-4 border text-[11px] font-bold uppercase tracking-[0.2em] transition-all rounded-sm flex items-center justify-center gap-2",
-                            isDeleting === (user.id || user.uid) 
-                              ? "bg-red-600 border-red-600 text-white animate-pulse"
-                              : "border-red-500/20 bg-red-500/5 text-red-500/60 hover:bg-red-600 hover:text-white hover:border-red-600"
-                          )}
-                        >
-                          {isDeleting === (user.id || user.uid) ? 'DELETING...' : 'Terminate Subject'}
-                        </button>
-                     </div>
-                  </div>
-                </motion.div>
+                </div>
               ))}
             </motion.div>
           )}
@@ -416,7 +437,7 @@ export default function AdminDashboard({ groupUsers, onBack }: { groupUsers: any
       </div>
 
       <div className="mt-12 text-[9px] text-white/10 uppercase tracking-[0.3em] font-bold border-t border-white/5 pt-8 flex items-center justify-between">
-         <span>Total Active Nodes: {groupUsers.length}</span>
+         <span>Total Active Nodes: {allUsers.length}</span>
          <span className="animate-pulse">System Stabilized // No Errors</span>
       </div>
     </div>
