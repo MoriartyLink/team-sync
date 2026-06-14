@@ -252,7 +252,7 @@ export default function App() {
   }
 
   if (isAdminView) {
-    return <AdminDashboard groupUsers={groupUsers} onBack={navigateToDashboard} />;
+    return <AdminDashboard onBack={navigateToDashboard} />;
   }
 
   if (!fUser) {

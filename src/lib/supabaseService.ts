@@ -215,6 +215,18 @@ export const syncAllUsersInGroup = (groupId: string, callback: (data: any[]) => 
   return () => { supabase.removeChannel(channel); };
 };
 
+export const syncAllUsers = (callback: (data: any[]) => void) => {
+  supabase.from('users').select('*').then(({ data }) => callback((data || []).map(mapUserFromDB)));
+  
+  const channel = supabase.channel('public:users:all')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+      supabase.from('users').select('*').then(({ data }) => callback((data || []).map(mapUserFromDB)));
+    })
+    .subscribe();
+    
+  return () => { supabase.removeChannel(channel); };
+};
+
 export const createTeamCode = async (code: string, description: string) => {
   const userId = await getCurrentUserId();
   if (!userId) throw new Error("Authentication required");
