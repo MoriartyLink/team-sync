@@ -460,18 +460,20 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full glass p-12 border-white/10 rounded-sm relative z-10 shadow-2xl backdrop-blur-3xl"
+        className="max-w-md w-full glass p-10 sm:p-12 border-white/10 rounded-sm relative z-10 shadow-2xl backdrop-blur-3xl"
       >
-        <h1 className="text-2xl font-display uppercase tracking-[0.3em] text-white mb-6 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">Team Sync App</h1>
-        <p className="text-white/40 mb-10 text-[10px] uppercase font-bold tracking-[0.2em] leading-relaxed">
-          Liquid Intelligence / Team Synchronization
+        <h1 className="text-2xl font-display uppercase tracking-[0.2em] text-white mb-2 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+          {isNewUser ? 'Create Account' : 'Welcome Back'}
+        </h1>
+        <p className="text-white/40 mb-10 text-[10px] uppercase font-bold tracking-[0.1em] leading-relaxed">
+          Team Synchronization / Identity
         </p>
 
         {error && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mb-8 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-sm text-[10px] font-bold uppercase tracking-widest leading-relaxed"
+            className="mb-8 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-sm text-xs font-medium uppercase tracking-widest leading-relaxed"
           >
             {error}
           </motion.div>
@@ -479,24 +481,24 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
 
         <form onSubmit={handleSubmit} className="space-y-6 text-left">
           <div>
-            <label className="block text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] mb-3 ml-1">Identity / Mail</label>
+            <label className="block text-xs font-bold text-white/70 uppercase tracking-widest mb-3 ml-1">Email Address</label>
             <input 
               type="email" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="user@domain.com"
-              className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-sm focus:outline-none focus:border-white transition-all text-xs text-white"
+              placeholder="you@company.com"
+              className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-sm focus:outline-none focus:border-white transition-all text-sm text-white placeholder:text-white/20"
               required
             />
           </div>
           <div>
-            <label className="block text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] mb-3 ml-1">Access / Pass</label>
+            <label className="block text-xs font-bold text-white/70 uppercase tracking-widest mb-3 ml-1">Password</label>
             <input 
               type="password" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-sm focus:outline-none focus:border-white transition-all text-xs text-white"
+              className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-sm focus:outline-none focus:border-white transition-all text-sm text-white placeholder:text-white/20"
               required
             />
           </div>
@@ -504,18 +506,21 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
           <button 
             type="submit"
             disabled={isLoggingIn}
-            className="w-full py-5 bg-white text-black rounded-sm font-bold text-xs uppercase tracking-[0.2em] hover:bg-white/90 transition-all disabled:opacity-50"
+            className="w-full py-4 bg-white text-black rounded-sm font-bold text-sm uppercase tracking-widest hover:bg-white/90 transition-all disabled:opacity-50 mt-2"
           >
-            {isLoggingIn ? "Processing..." : (isNewUser ? "Engage Protocol / Sign Up" : "Authenticate / Sign In")}
+            {isLoggingIn ? "Processing..." : (isNewUser ? "Sign Up" : "Sign In")}
           </button>
 
           <div className="flex flex-col items-center gap-3 mt-6">
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">
+              {isNewUser ? "Already have an account?" : "Don't have an account?"}
+            </p>
             <button 
               type="button"
               onClick={() => setIsNewUser(!isNewUser)}
-              className="text-white/30 text-[9px] font-bold uppercase tracking-[0.2em] hover:text-white transition-colors"
+              className="text-white text-xs font-bold uppercase tracking-widest hover:text-white/70 transition-colors"
             >
-              {isNewUser ? "Active Account? Login" : "New Member? Join"}
+              {isNewUser ? "Sign In Here" : "Create Account"}
             </button>
           </div>
         </form>
