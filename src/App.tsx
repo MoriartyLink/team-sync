@@ -19,7 +19,8 @@ import {
   Settings2,
   BellOff,
   BarChart2,
-  ChevronDown
+  ChevronDown,
+  Mail
 } from 'lucide-react';
 import { 
   format, 
@@ -683,6 +684,21 @@ function AlignmentSearch({ users, availability, selectedUserIds, viewDate, hours
 
   const busyUsers = relevantUsers.filter((u: any) => !availableUsers.find((au: any) => au.id === u.id));
 
+  const handleSendEmail = () => {
+    const emails = availableUsers.map((u: any) => u.email).filter(Boolean);
+    if (emails.length === 0) {
+      alert("No email addresses found for aligned users.");
+      return;
+    }
+    
+    // Client-Side Delegation (Mailto Pattern) for Email Sending
+    const subject = encodeURIComponent(`Alignment Synchronization: ${format(viewDate, 'MMM d, yyyy')}`);
+    const body = encodeURIComponent(`Team,\n\nWe have identified alignment for a synchronization session on ${format(viewDate, 'MMM d, yyyy')} from ${formatHour(selectedHour)} to ${formatHour(selectedHour + 1)}.\n\nPlease confirm your availability.\n\nBest,\nTeam Availability Matrix`);
+    
+    // Using BCC for privacy/bulk sending archetype
+    window.location.href = `mailto:?bcc=${emails.join(',')}&subject=${subject}&body=${body}`;
+  };
+
   return (
     <div className="space-y-6">
       <div className="relative">
@@ -749,6 +765,16 @@ function AlignmentSearch({ users, availability, selectedUserIds, viewDate, hours
               {busyUsers.length > 5 && <p className="text-[8px] text-white/20 uppercase tracking-widest">+{busyUsers.length - 5} more</p>}
             </div>
           </div>
+        )}
+
+        {availableUsers.length > 0 && (
+          <button 
+            onClick={handleSendEmail}
+            className="w-full mt-2 py-3 bg-vivid-blue/10 border border-vivid-blue/30 text-vivid-blue text-[10px] font-bold uppercase tracking-widest hover:bg-vivid-blue hover:text-black transition-all rounded-sm flex items-center justify-center gap-2"
+          >
+            <Mail className="w-3 h-3" />
+            Dispatch Comm / Mailto
+          </button>
         )}
       </div>
     </div>
