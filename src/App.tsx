@@ -435,6 +435,10 @@ export default function App() {
           setSelectedUserIds={setSelectedUserIds}
         />
       </main>
+
+      <div className="flex-shrink-0 text-center py-2 text-[10px] text-white/20 bg-black/40 backdrop-blur-md border-t border-white/5 font-mono tracking-wide z-40">
+        Connect with the developer: <a href="mailto:sudosummonmoriarty@gmail.com" className="hover:text-white/60 transition-colors">sudosummonmoriarty@gmail.com</a> | <a href="https://github.com/MoriartyLink" target="_blank" rel="noreferrer" className="hover:text-white/60 transition-colors">GitHub</a>
+      </div>
     </div>
   );
 }
@@ -526,6 +530,10 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
           </div>
         </form>
       </motion.div>
+
+      <div className="absolute bottom-6 w-full text-center text-[10px] text-white/20 font-mono tracking-wide z-10 pointer-events-auto">
+        Connect with the developer: <a href="mailto:sudosummonmoriarty@gmail.com" className="hover:text-white/60 transition-colors">sudosummonmoriarty@gmail.com</a> | <a href="https://github.com/MoriartyLink" target="_blank" rel="noreferrer" className="hover:text-white/60 transition-colors">GitHub</a>
+      </div>
     </div>
   );
 }
