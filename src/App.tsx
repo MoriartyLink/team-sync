@@ -449,12 +449,38 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
   const [isNewUser, setIsNewUser] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  const handleSubmit = (e: FormEvent) => {
+  // Sync external errors to local state
+  useEffect(() => {
+    if (error) {
+      setLocalError(error);
+      setIsSubmitting(false);
+    }
+  }, [error]);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
-    onLogin({ email, pass: password, isNew: isNewUser });
+    if (!email || !password || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    setLocalError(null);
+
+    try {
+      await onLogin({ email, pass: password, isNew: isNewUser });
+    } catch (err: any) {
+      // If the parent onLogin doesn't handle its own try/catch and throws
+      setIsSubmitting(false);
+      if (err.status === 429 || err.message?.toLowerCase().includes('rate limit')) {
+        setLocalError("Rate limit exceeded. Please wait a few moments before trying again.");
+      } else {
+        setLocalError(err.message || "An unexpected error occurred.");
+      }
+    }
   };
+
+  const displayedError = localError || error;
 
   return (
     <div className="h-screen w-full bg-black relative flex flex-col items-center justify-center p-6 text-center noise overflow-hidden">
@@ -474,13 +500,15 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
           Team Synchronization / Identity
         </p>
 
-        {error && (
+        {displayedError && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="mb-8 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-sm text-xs font-medium uppercase tracking-widest leading-relaxed"
           >
-            {error}
+            {displayedError.toLowerCase().includes('rate limit') 
+              ? "Too many requests. Please wait 60 seconds." 
+              : displayedError}
           </motion.div>
         )}
 
@@ -494,6 +522,7 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
               placeholder="you@company.com"
               className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-sm focus:outline-none focus:border-white transition-all text-sm text-white placeholder:text-white/20"
               required
+              disabled={isSubmitting || isLoggingIn}
             />
           </div>
           <div>
@@ -505,15 +534,16 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
               placeholder="••••••••"
               className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-sm focus:outline-none focus:border-white transition-all text-sm text-white placeholder:text-white/20"
               required
+              disabled={isSubmitting || isLoggingIn}
             />
           </div>
           
           <button 
             type="submit"
-            disabled={isLoggingIn}
+            disabled={isSubmitting || isLoggingIn}
             className="w-full py-4 bg-white text-black rounded-sm font-bold text-sm uppercase tracking-widest hover:bg-white/90 transition-all disabled:opacity-50 mt-2"
           >
-            {isLoggingIn ? "Processing..." : (isNewUser ? "Sign Up" : "Sign In")}
+            {isSubmitting || isLoggingIn ? "Processing..." : (isNewUser ? "Sign Up" : "Sign In")}
           </button>
 
           <div className="flex flex-col items-center gap-3 mt-6">
@@ -522,14 +552,19 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
             </p>
             <button 
               type="button"
-              onClick={() => setIsNewUser(!isNewUser)}
-              className="text-white text-xs font-bold uppercase tracking-widest hover:text-white/70 transition-colors"
+              onClick={() => {
+                setIsNewUser(!isNewUser);
+                setLocalError(null);
+              }}
+              disabled={isSubmitting || isLoggingIn}
+              className="text-white text-xs font-bold uppercase tracking-widest hover:text-white/70 transition-colors disabled:opacity-50"
             >
               {isNewUser ? "Sign In Here" : "Create Account"}
             </button>
           </div>
         </form>
       </motion.div>
+
 
       <div className="absolute bottom-6 w-full text-center text-[10px] text-white/20 font-mono tracking-wide z-10 pointer-events-auto">
         Connect with the developer: <a href="mailto:sudosummonmoriarty@gmail.com" className="hover:text-white/60 transition-colors">sudosummonmoriarty@gmail.com</a> | <a href="https://github.com/MoriartyLink" target="_blank" rel="noreferrer" className="hover:text-white/60 transition-colors">GitHub</a>
