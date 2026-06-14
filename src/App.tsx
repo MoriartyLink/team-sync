@@ -218,21 +218,22 @@ export default function App() {
     try {
       if (emailData) {
         const { email, pass, isNew } = emailData;
-        let authError;
         if (isNew) {
-          const { error } = await supabase.auth.signUp({ email, password: pass });
-          authError = error;
+          const { error, data } = await supabase.auth.signUp({ email, password: pass });
+          if (error) throw error;
+          if (data?.user && !data?.session) {
+             return { confirmationSent: true };
+          }
         } else {
           const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-          authError = error;
+          if (error) throw error;
         }
-        
-        if (authError) throw authError;
       }
     } catch (error: any) {
       console.error("Authentication failed:", error);
       let message = error.message || "An error occurred during authentication.";
       setLoginError(message);
+      throw error;
     } finally {
       setIsLoggingIn(false);
     }
@@ -451,6 +452,8 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   // Sync external errors to local state
   useEffect(() => {
@@ -460,6 +463,16 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
     }
   }, [error]);
 
+  useEffect(() => {
+    let timer: any;
+    if (resendCooldown > 0) {
+      timer = setInterval(() => {
+        setResendCooldown(c => c - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!email || !password || isSubmitting) return;
@@ -468,15 +481,38 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
     setLocalError(null);
 
     try {
-      await onLogin({ email, pass: password, isNew: isNewUser });
+      const result = await (onLogin({ email, pass: password, isNew: isNewUser }) as any);
+      if (result?.confirmationSent) {
+        setShowConfirmation(true);
+        setResendCooldown(60);
+      }
     } catch (err: any) {
-      // If the parent onLogin doesn't handle its own try/catch and throws
       setIsSubmitting(false);
       if (err.status === 429 || err.message?.toLowerCase().includes('rate limit')) {
-        setLocalError("Rate limit exceeded. Please wait a few moments before trying again.");
+        setLocalError("Rate limit exceeded. Please wait 60 seconds.");
       } else {
         setLocalError(err.message || "An unexpected error occurred.");
       }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0 || isSubmitting) return;
+    setIsSubmitting(true);
+    setLocalError(null);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+      if (error) throw error;
+      setResendCooldown(60);
+    } catch (err: any) {
+      setLocalError(err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -494,10 +530,10 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
         className="max-w-md w-full glass p-10 sm:p-12 border-white/10 rounded-sm relative z-10 shadow-2xl backdrop-blur-3xl"
       >
         <h1 className="text-2xl font-display uppercase tracking-[0.2em] text-white mb-2 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
-          {isNewUser ? 'Create Account' : 'Welcome Back'}
+          {showConfirmation ? 'Verify Email' : (isNewUser ? 'Create Account' : 'Welcome Back')}
         </h1>
         <p className="text-white/40 mb-10 text-[10px] uppercase font-bold tracking-[0.1em] leading-relaxed">
-          Team Synchronization / Identity
+          {showConfirmation ? 'Check your inbox for a link' : 'Team Synchronization / Identity'}
         </p>
 
         {displayedError && (
@@ -512,57 +548,84 @@ function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email:
           </motion.div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6 text-left">
-          <div>
-            <label className="block text-xs font-bold text-white/70 uppercase tracking-widest mb-3 ml-1">Email Address</label>
-            <input 
-              type="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
-              className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-sm focus:outline-none focus:border-white transition-all text-sm text-white placeholder:text-white/20"
-              required
-              disabled={isSubmitting || isLoggingIn}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-white/70 uppercase tracking-widest mb-3 ml-1">Password</label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-sm focus:outline-none focus:border-white transition-all text-sm text-white placeholder:text-white/20"
-              required
-              disabled={isSubmitting || isLoggingIn}
-            />
-          </div>
-          
-          <button 
-            type="submit"
-            disabled={isSubmitting || isLoggingIn}
-            className="w-full py-4 bg-white text-black rounded-sm font-bold text-sm uppercase tracking-widest hover:bg-white/90 transition-all disabled:opacity-50 mt-2"
-          >
-            {isSubmitting || isLoggingIn ? "Processing..." : (isNewUser ? "Sign Up" : "Sign In")}
-          </button>
-
-          <div className="flex flex-col items-center gap-3 mt-6">
-            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">
-              {isNewUser ? "Already have an account?" : "Don't have an account?"}
+        {showConfirmation ? (
+          <div className="space-y-6">
+            <p className="text-xs text-white/60 font-medium uppercase tracking-widest leading-loose">
+              We sent a verification link to <span className="text-white">{email}</span>. 
+              Please click the link in the email to complete your registration.
             </p>
-            <button 
-              type="button"
-              onClick={() => {
-                setIsNewUser(!isNewUser);
-                setLocalError(null);
-              }}
-              disabled={isSubmitting || isLoggingIn}
-              className="text-white text-xs font-bold uppercase tracking-widest hover:text-white/70 transition-colors disabled:opacity-50"
-            >
-              {isNewUser ? "Sign In Here" : "Create Account"}
-            </button>
+            <div className="pt-4 space-y-4">
+              <button 
+                onClick={handleResend}
+                disabled={resendCooldown > 0 || isSubmitting}
+                className="w-full py-4 bg-white/5 border border-white/10 text-white rounded-sm font-bold text-sm uppercase tracking-widest hover:bg-white/10 transition-all disabled:opacity-30"
+              >
+                {resendCooldown > 0 ? `Resend available in ${resendCooldown}s` : "Resend Verification Email"}
+              </button>
+              <button 
+                onClick={() => {
+                  setShowConfirmation(false);
+                  setLocalError(null);
+                }}
+                className="text-white/40 text-[10px] font-bold uppercase tracking-widest hover:text-white transition-colors"
+              >
+                Back to Sign In
+              </button>
+            </div>
           </div>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6 text-left">
+            <div>
+              <label className="block text-xs font-bold text-white/70 uppercase tracking-widest mb-3 ml-1">Email Address</label>
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-sm focus:outline-none focus:border-white transition-all text-sm text-white placeholder:text-white/20"
+                required
+                disabled={isSubmitting || isLoggingIn}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 uppercase tracking-widest mb-3 ml-1">Password</label>
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-sm focus:outline-none focus:border-white transition-all text-sm text-white placeholder:text-white/20"
+                required
+                disabled={isSubmitting || isLoggingIn}
+              />
+            </div>
+            
+            <button 
+              type="submit"
+              disabled={isSubmitting || isLoggingIn}
+              className="w-full py-4 bg-white text-black rounded-sm font-bold text-sm uppercase tracking-widest hover:bg-white/90 transition-all disabled:opacity-50 mt-2"
+            >
+              {isSubmitting || isLoggingIn ? "Processing..." : (isNewUser ? "Sign Up" : "Sign In")}
+            </button>
+
+            <div className="flex flex-col items-center gap-3 mt-6">
+              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">
+                {isNewUser ? "Already have an account?" : "Don't have an account?"}
+              </p>
+              <button 
+                type="button"
+                onClick={() => {
+                  setIsNewUser(!isNewUser);
+                  setLocalError(null);
+                }}
+                disabled={isSubmitting || isLoggingIn}
+                className="text-white text-xs font-bold uppercase tracking-widest hover:text-white/70 transition-colors disabled:opacity-50"
+              >
+                {isNewUser ? "Sign In Here" : "Create Account"}
+              </button>
+            </div>
+          </form>
+        )}
       </motion.div>
 
 
