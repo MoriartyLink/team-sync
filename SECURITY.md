@@ -35,3 +35,6 @@ Please provide the following details in your report:
 4. Once the issue is resolved and a fix is released, you will be credited in our changelog/release notes (unless you prefer to remain anonymous).
 
 Thank you for helping keep our project safe!
+
+---
+Connect with the developer: [sudosummonmoriarty@gmail.com](mailto:sudosummonmoriarty@gmail.com) | [GitHub](https://github.com/MoriartyLink)
