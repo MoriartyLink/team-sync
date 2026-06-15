@@ -56,7 +56,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-black text-white font-sans selection:bg-vivid-blue selection:text-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen w-full bg-black text-white font-sans selection:bg-vivid-blue selection:text-black flex flex-col items-center justify-center p-6 relative overflow-hidden noise">
       {/* Liquid Glass Background Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-vivid-blue/10 blur-[120px]" />
