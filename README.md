@@ -2,8 +2,7 @@
 *The fastest way to align your team's schedule.*
 
 ## Why use Team Sync?
-Scheduling meetings shouldn't require mental gymnastics. Pinging "are you free at 3 PM?" in chat wastes time and breaks focus. Team Sync solves this by providing a shared, real-time availability matrix. You paint the times you are free, and the engine automatically calculates the optimal meeting slots for everyone. No guessing, no friction. 
-
+Scheduling meetings shouldn't require mental gymnastics. Pinging "are you free at 3 PM?" in chat wastes time and breaks focus. Team Sync solves this by providing a shared, real-time availability grid. You paint the times you are free, and the engine automatically calculates the optimal meeting slots for everyone. No guessing, no friction.
 ## Who is it for?
 - **Remote & Hybrid Teams:** Coordinate across different routines and habits without the endless back-and-forth.
 - **Project Managers & Leads:** Instantly see exactly when your entire squad is available for a sync.
@@ -27,7 +26,7 @@ Click the **Bar Chart** icon in the top navigation to open the Analysis view.
 
 ### 3. Join Your Squad (Settings)
 Click the **Settings** icon in the top right to update your profile.
-- **Team Access Code:** Enter your squad's unique code to join their matrix. Only people with this shared code can see and interact with your schedule.
+- **Team Access Code:** Enter your squad's unique code to join their shared sync. Only people with this shared code can see and interact with your schedule.
 
 ---
 *Built for speed. Designed for focus.*

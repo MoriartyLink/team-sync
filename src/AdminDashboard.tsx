@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Settings as SettingsIcon, Users2, Lock } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from './lib/utils';
 import { supabase } from './lib/supabase';
 import { 
@@ -346,13 +346,15 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               className="space-y-12"
             >
               {Object.entries(
-                allUsers.reduce((acc, user) => {
+                allUsers.reduce((acc: Record<string, { groupName: string, users: any[] }>, user) => {
                   const gId = user.groupId || 'unknown';
                   if (!acc[gId]) acc[gId] = { groupName: user.groupName || 'Unknown Team', users: [] };
                   acc[gId].users.push(user);
                   return acc;
                 }, {} as Record<string, { groupName: string, users: any[] }>)
-              ).map(([groupId, { groupName, users }]) => (
+              ).map(([groupId, data]) => {
+                const { groupName, users } = data as { groupName: string, users: any[] };
+                return (
                 <div key={groupId} className="space-y-6">
                   <div className="flex items-center justify-between border-b border-white/10 pb-4">
                     <h2 className="text-xl font-display uppercase tracking-widest text-white/80">Cluster: {groupId}</h2>
@@ -430,10 +432,11 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     ))}
                   </div>
                 </div>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
 
       <div className="mt-12 text-[9px] text-white/10 uppercase tracking-[0.3em] font-bold border-t border-white/5 pt-8 flex items-center justify-between">

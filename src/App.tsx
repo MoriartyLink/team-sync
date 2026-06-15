@@ -37,7 +37,8 @@ import {
   isSameMonth,
   endOfWeek
 } from 'date-fns';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from './lib/utils';
 import { supabase } from './lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -54,6 +55,8 @@ import {
   validateTeamCode
 } from './lib/supabaseService';
 import AdminDashboard from './AdminDashboard';
+import LandingPage from './LandingPage';
+import AuthPage from './AuthPage';
 
 // --- Shared Components ---
 
@@ -92,16 +95,111 @@ export default function App() {
   const [fUser, setFUser] = useState<SupabaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Listen for Auth changes
+  useEffect(() => {
+    // Safety timeout: Ensure loading is disabled after 1s even if something hangs
+    const safetyTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setFUser(session?.user || null);
+      if (!session?.user) {
+        setUserProfile(null);
+        setLoading(false);
+        clearTimeout(safetyTimeout);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setFUser(session?.user || null);
+      if (!session?.user) {
+        setUserProfile(null);
+        setLoading(false);
+        clearTimeout(safetyTimeout);
+      }
+      
+      // If user just logged in or signed up, and they are on an auth page, redirect them
+      if (session?.user && (location.pathname === '/login' || location.pathname === '/signup')) {
+        navigate('/');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(safetyTimeout);
+    };
+  }, [navigate, location.pathname]);
+
+  // Listen for User Profile changes
+  useEffect(() => {
+    if (!fUser) return;
+    return syncUserData(fUser.id, (profile) => {
+      setUserProfile(profile);
+      setLoading(false);
+    });
+  }, [fUser]);
+
+  if (loading) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-black">
+        <motion.div 
+          animate={{ rotate: 360 }} 
+          transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+          className="w-12 h-12 border-2 border-white border-t-transparent rounded-full mb-6" 
+        />
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-[10px] font-bold text-white uppercase tracking-[0.4em] animate-pulse">Initializing System</p>
+          <p className="text-[8px] font-mono text-white/20 uppercase tracking-widest">Awaiting Synchronization...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/admin" element={<AdminDashboard onBack={() => navigate('/')} />} />
+      <Route path="/login" element={fUser ? <Navigate to="/" /> : <AuthPage />} />
+      <Route path="/signup" element={fUser ? <Navigate to="/" /> : <AuthPage />} />
+      <Route 
+        path="/" 
+        element={
+          !fUser ? (
+            <LandingPage />
+          ) : !userProfile ? (
+            <Onboarding 
+              user={fUser} 
+              onComplete={(data: any) => createProfile(fUser.id, { 
+                ...data, 
+                email: fUser.email, 
+                avatar: fUser.user_metadata?.avatar_url 
+              })} 
+            />
+          ) : (
+            <AuthenticatedApp fUser={fUser} userProfile={userProfile} />
+          )
+        } 
+      />
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  );
+}
+
+function AuthenticatedApp({ fUser, userProfile }: { fUser: SupabaseUser, userProfile: any }) {
   const [groupUsers, setGroupUsers] = useState<any[]>([]);
   const [groupAvailability, setGroupAvailability] = useState<any[]>([]);
   const [viewDate, setViewDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [direction, setDirection] = useState(0); // -1 for left, 1 for right
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
-  const [isAdminView, setIsAdminView] = useState(window.location.pathname === '/admin');
-  const [currentView, setCurrentView] = useState<'dashboard' | 'settings'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'settings' | 'analysis'>('dashboard');
   const [refreshKey, setRefreshKey] = useState(0);
   const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('24h');
+  const [showMobileCalendar, setShowMobileCalendar] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
@@ -119,50 +217,6 @@ export default function App() {
     setDirection(newDate > viewDate ? 1 : -1);
     setViewDate(newDate);
   };
-
-  // Listen for navigation
-  useEffect(() => {
-    const handlePopState = () => {
-      setIsAdminView(window.location.pathname === '/admin');
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  const navigateToDashboard = () => {
-    window.history.pushState({}, '', '/');
-    setIsAdminView(false);
-  };
-
-  // Listen for Auth changes
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setFUser(session?.user || null);
-      if (!session?.user) {
-        setUserProfile(null);
-        setLoading(false);
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setFUser(session?.user || null);
-      if (!session?.user) {
-        setUserProfile(null);
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Listen for User Profile changes
-  useEffect(() => {
-    if (!fUser) return;
-    return syncUserData(fUser.id, (profile) => {
-      setUserProfile(profile);
-      setLoading(false);
-    });
-  }, [fUser]);
 
   // Listen for Group Data
   useEffect(() => {
@@ -182,11 +236,6 @@ export default function App() {
       unsubAvail();
     };
   }, [userProfile?.groupId, refreshKey]);
-
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [showMobileCalendar, setShowMobileCalendar] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(true);
 
   const hours = useMemo(() => Array.from({ length: 15 }).map((_, i) => i + 9), []); // 9 AM to 11 PM
   const todayStr = format(viewDate, 'yyyy-MM-dd');
@@ -210,59 +259,7 @@ export default function App() {
     return counts;
   }, [groupAvailability, todayStr, hours, selectedUserIds, visibleUserIds]);
 
-  const handleLogin = async (emailData: { email: string, pass: string, isNew: boolean }) => {
-    if (isLoggingIn) return;
-    setIsLoggingIn(true);
-    setLoginError(null);
-    
-    try {
-      if (emailData) {
-        const { email, pass, isNew } = emailData;
-        let authError;
-        if (isNew) {
-          const { error } = await supabase.auth.signUp({ email, password: pass });
-          authError = error;
-        } else {
-          const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-          authError = error;
-        }
-        
-        if (authError) throw authError;
-      }
-    } catch (error: any) {
-      console.error("Authentication failed:", error);
-      let message = error.message || "An error occurred during authentication.";
-      setLoginError(message);
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
-
   const handleLogout = () => supabase.auth.signOut();
-
-  if (loading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-black">
-        <motion.div 
-          animate={{ rotate: 360 }} 
-          transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-          className="w-8 h-8 border-2 border-white border-t-transparent rounded-full" 
-        />
-      </div>
-    );
-  }
-
-  if (isAdminView) {
-    return <AdminDashboard onBack={navigateToDashboard} />;
-  }
-
-  if (!fUser) {
-    return <LandingPage onLogin={handleLogin} isLoggingIn={isLoggingIn} error={loginError} />;
-  }
-
-  if (!userProfile) {
-    return <Onboarding user={fUser} onComplete={(data: any) => createProfile(fUser.id, { ...data, email: fUser.email, avatar: fUser.user_metadata?.avatar_url })} />;
-  }
 
   if (currentView === 'settings') {
     return <SettingsView userProfile={userProfile} onBack={() => setCurrentView('dashboard')} />;
@@ -418,7 +415,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <MatrixView 
+        <SyncGrid 
           users={visibleUsers} 
           availability={groupAvailability} 
           currentUserId={fUser.id} 
@@ -443,100 +440,8 @@ export default function App() {
   );
 }
 
+
 // --- Sub-Pages ---
-
-function LandingPage({ onLogin, isLoggingIn, error }: { onLogin: (data: { email: string, pass: string, isNew: boolean }) => void, isLoggingIn: boolean, error: string | null }) {
-  const [isNewUser, setIsNewUser] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) return;
-    onLogin({ email, pass: password, isNew: isNewUser });
-  };
-
-  return (
-    <div className="h-screen w-full bg-black relative flex flex-col items-center justify-center p-6 text-center noise overflow-hidden">
-      {/* Background Flares */}
-      <div className="absolute inset-0 pointer-events-none liquid-flare opacity-40 z-0" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-vivid-blue/5 blur-[160px] rounded-full pointer-events-none z-0" />
-
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full glass p-10 sm:p-12 border-white/10 rounded-sm relative z-10 shadow-2xl backdrop-blur-3xl"
-      >
-        <h1 className="text-2xl font-display uppercase tracking-[0.2em] text-white mb-2 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
-          {isNewUser ? 'Create Account' : 'Welcome Back'}
-        </h1>
-        <p className="text-white/40 mb-10 text-[10px] uppercase font-bold tracking-[0.1em] leading-relaxed">
-          Team Synchronization / Identity
-        </p>
-
-        {error && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mb-8 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-sm text-xs font-medium uppercase tracking-widest leading-relaxed"
-          >
-            {error}
-          </motion.div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6 text-left">
-          <div>
-            <label className="block text-xs font-bold text-white/70 uppercase tracking-widest mb-3 ml-1">Email Address</label>
-            <input 
-              type="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
-              className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-sm focus:outline-none focus:border-white transition-all text-sm text-white placeholder:text-white/20"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-white/70 uppercase tracking-widest mb-3 ml-1">Password</label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-sm focus:outline-none focus:border-white transition-all text-sm text-white placeholder:text-white/20"
-              required
-            />
-          </div>
-          
-          <button 
-            type="submit"
-            disabled={isLoggingIn}
-            className="w-full py-4 bg-white text-black rounded-sm font-bold text-sm uppercase tracking-widest hover:bg-white/90 transition-all disabled:opacity-50 mt-2"
-          >
-            {isLoggingIn ? "Processing..." : (isNewUser ? "Sign Up" : "Sign In")}
-          </button>
-
-          <div className="flex flex-col items-center gap-3 mt-6">
-            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">
-              {isNewUser ? "Already have an account?" : "Don't have an account?"}
-            </p>
-            <button 
-              type="button"
-              onClick={() => setIsNewUser(!isNewUser)}
-              className="text-white text-xs font-bold uppercase tracking-widest hover:text-white/70 transition-colors"
-            >
-              {isNewUser ? "Sign In Here" : "Create Account"}
-            </button>
-          </div>
-        </form>
-      </motion.div>
-
-      <div className="absolute bottom-6 w-full text-center text-[10px] text-white/20 font-mono tracking-wide z-10 pointer-events-auto">
-        Connect with the developer: <a href="mailto:sudosummonmoriarty@gmail.com" className="hover:text-white/60 transition-colors">sudosummonmoriarty@gmail.com</a> | <a href="https://github.com/MoriartyLink" target="_blank" rel="noreferrer" className="hover:text-white/60 transition-colors">GitHub</a>
-      </div>
-    </div>
-  );
-}
 
 function Onboarding({ user, onComplete }: any) {
   const [step, setStep] = useState(1);
@@ -701,7 +606,7 @@ function AlignmentSearch({ users, availability, selectedUserIds, viewDate, hours
     
     // Client-Side Delegation (Mailto Pattern) for Email Sending
     const subject = encodeURIComponent(`Alignment Synchronization: ${format(viewDate, 'MMM d, yyyy')}`);
-    const body = encodeURIComponent(`Team,\n\nWe have identified alignment for a synchronization session on ${format(viewDate, 'MMM d, yyyy')} from ${formatHour(selectedHour)} to ${formatHour(selectedHour + 1)}.\n\nPlease confirm your availability.\n\nBest,\nTeam Availability Matrix`);
+    const body = encodeURIComponent(`Team,\n\nWe have identified alignment for a synchronization session on ${format(viewDate, 'MMM d, yyyy')} from ${formatHour(selectedHour)} to ${formatHour(selectedHour + 1)}.\n\nPlease confirm your availability.\n\nBest,\nTeam Sync App`);
     
     // Using BCC for privacy/bulk sending archetype
     window.location.href = `mailto:?bcc=${emails.join(',')}&subject=${subject}&body=${body}`;
@@ -887,9 +792,9 @@ function MonthCalendar({ viewDate, setViewDate, availability, usersCount }: any)
   );
 }
 
-// --- The Matrix View ---
+// --- The Sync Grid ---
 
-function MatrixView({ users, availability, currentUserId, viewDate, setViewDate, viewMode, setViewMode, direction, userProfile, hours, formatHour, overlaps, selectedUserIds, setSelectedUserIds }: any) {
+function SyncGrid({ users, availability, currentUserId, viewDate, setViewDate, viewMode, setViewMode, direction, userProfile, hours, formatHour, overlaps, selectedUserIds, setSelectedUserIds }: any) {
   const [hoveredSlot, setHoveredSlot] = useState<any>(null);
   const [optimisticAvailability, setOptimisticAvailability] = useState<any[]>([]);
 

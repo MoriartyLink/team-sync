@@ -1,6 +1,6 @@
 # Team Sync - User Manual
 
-Welcome to **Team Sync** (Team Availability Matrix)! This guide will help you understand how to use the application to effortlessly coordinate schedules with your team.
+Welcome to **Team Sync**! This guide will help you understand how to use the application to effortlessly coordinate schedules with your team.
 
 ---
 
@@ -19,7 +19,7 @@ Upon your first login, you will go through a quick 3-step setup process:
 
 ---
 
-## 2. The Dashboard (Matrix View)
+## 2. The Dashboard (Sync View)
 
 The Dashboard is your main hub for viewing and updating availability.
 
@@ -36,7 +36,8 @@ The Dashboard is your main hub for viewing and updating availability.
 - **Month Calendar**: Open the sidebar (desktop) or click the calendar icon (mobile) to jump to a specific date quickly.
 
 ### Filtering the View
-- Use the **Members** column on the left to filter the matrix. 
+- Use the **Members** column on the left to filter the view.
+ 
 - Click the circle next to a user's name to hide/show their schedule.
 - Click **All** or **None** at the top of the Members column to quickly select or deselect everyone.
 

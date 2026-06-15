@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-The following table lists the versions of Team Sync (Team Availability Matrix) that are currently supported with security updates.
+The following table lists the versions of Team Sync that are currently supported with security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
