@@ -54,6 +54,7 @@ import {
   validateTeamCode
 } from './lib/supabaseService';
 import AdminDashboard from './AdminDashboard';
+import MarketingLanding from './MarketingLanding';
 
 // --- Shared Components ---
 
@@ -102,6 +103,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'settings'>('dashboard');
   const [refreshKey, setRefreshKey] = useState(0);
   const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('24h');
+  const [isEnteringAuth, setIsEnteringAuth] = useState(false);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
@@ -257,7 +259,33 @@ export default function App() {
   }
 
   if (!fUser) {
-    return <LandingPage onLogin={handleLogin} isLoggingIn={isLoggingIn} error={loginError} />;
+    return (
+      <AnimatePresence mode="wait">
+        {!isEnteringAuth ? (
+          <motion.div 
+            key="marketing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="w-full h-full"
+          >
+            <MarketingLanding onGetStarted={() => setIsEnteringAuth(true)} />
+          </motion.div>
+        ) : (
+          <motion.div 
+            key="auth"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="w-full h-full"
+          >
+            <LandingPage onLogin={handleLogin} isLoggingIn={isLoggingIn} error={loginError} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
   }
 
   if (!userProfile) {
